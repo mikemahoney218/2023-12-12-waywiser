@@ -1,0 +1,258 @@
+---
+title: "	Consistent Workflows for Assessing Model Performance"
+subtitle: "Tools and Applications to Natural Climate Solutions"
+author:
+  - name: "**Michael J Mahoney**"
+    orcid: 0000-0003-2402-304X
+    email: mjmahone@esf.edu
+    url: https://mm218.dev
+format: 
+  revealjs: 
+    standalone: true
+    center: true
+    slide-number: false
+    overview: true
+    width: 1280
+    height: 720
+    theme: [default, custom.scss]
+    footer: "Consistent Workflows for Assessing Model Performance - AGU 2023"
+---
+
+
+## About Me
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+
+::: columns
+::: {.column width="50%"}
+-   Mike Mahoney
+
+-   PhD candidate in environmental science
+
+-   Research assistant, CAFRI
+
+-   Applied spatial ML, visualization
+
+-   These slides: [mm218.dev/agu2023waywiser](https://mm218.dev/agu2023waywiser)
+
+:::
+
+::: {.column width="10%"}
+:::
+
+::: {.column width="40%"}
+![](me.jpeg)
+:::
+:::
+
+# Spatial models predict at different resolutions than stakeholders need
+
+---
+
+![](nys_agb.png){.quarto-figure-center}
+
+---
+
+![](agb_pixels.png){.quarto-figure-center}
+
+---
+
+![](tax_pixels.png){.quarto-figure-center}
+
+---
+
+![](dec_pixels.png){.quarto-figure-center}
+
+---
+
+![](grids.png){.quarto-figure-center}
+
+---
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+library(units)
+library(ggplot2)
+library(waywiserrr)
+library(geomtextpath)
+
+nyt_split <- rsample::initial_split(ny_trees)
+nyt_p <- rsample::assessment(nyt_split)
+nyt_p$p <- predict(lm(agb ~ n_trees, rsample::analysis(nyt_split)), nyt_p)
+
+Sys.setenv("RAYON_NUM_THREADS" = 16)
+
+ww_multi_scale(nyt_p, agb, p, cellsize = units::set_units(seq(10, 100, 10), "km")) |> 
+  tidyr::unnest(.grid_args) |> 
+  dplyr::mutate(
+    cellsize = as.numeric(cellsize),
+    .metric = toupper(.metric)
+  ) |> 
+  ggplot(aes(cellsize, .estimate, color = .metric)) +
+  geom_textline(aes(label = .metric), size = 6) + 
+  scale_color_manual(values = head(viridis::viridis(3), 2)) + 
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    axis.title = element_text(size = 16),
+    axis.line = element_line(linewidth = 1)
+  ) + 
+  labs(y = "Metric value", x = "Grid polygon size")
+```
+
+# Spatial models often rely on convenience samples
+
+---
+
+![](adk.png){.quarto-figure-center}
+
+---
+
+![](adk_lands.png){.quarto-figure-center}
+
+---
+
+![](aoa.png){.quarto-figure-center}
+
+---
+
+```{r}
+df <- data.frame(
+  x = rnorm(100, sd = 0.1)
+)
+df$y <- (0.9 * df$x) * (1 + (0.5 - runif(100)))
+
+df |> 
+  ggplot(aes(x, y)) +
+  geom_point() + 
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    axis.title = element_text(size = 16),
+    axis.line = element_line(linewidth = 1)
+  ) + 
+  labs(y = "Predictor 2", x = "Predictor 1")
+```
+
+---
+
+```{r}
+df |> 
+  ggplot(aes(x, y)) +
+  geom_point() + 
+  geom_smooth(method = "lm", formula = "y ~ x", se = FALSE) + 
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    axis.title = element_text(size = 16),
+    axis.line = element_line(linewidth = 1)
+  ) + 
+  labs(y = "Predictor 2", x = "Predictor 1")
+```
+
+
+---
+
+```{r}
+df |> 
+  ggplot(aes(x, y)) +
+  geom_point() + 
+  geom_smooth(method = "lm", formula = "y ~ x", se = FALSE) + 
+  geom_point(x = mean(df$x), y = mean(df$y), color = "red", size = 5) + 
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    axis.title = element_text(size = 16),
+    axis.line = element_line(linewidth = 1)
+  ) + 
+  labs(y = "Predictor 2", x = "Predictor 1")
+```
+
+---
+
+```{r}
+df |> 
+  ggplot(aes(x, y)) +
+  geom_point() + 
+  geom_smooth(method = "lm", formula = "y ~ x", se = FALSE) + 
+  geom_point(x = mean(df$x), y = mean(df$y), color = "red", size = 5) + 
+  geom_point(x = min(df$x), y = max(df$y), color = "red", size = 5) + 
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    axis.title = element_text(size = 16),
+    axis.line = element_line(linewidth = 1)
+  ) + 
+  labs(y = "Predictor 2", x = "Predictor 1")
+```
+
+---
+
+![](biomass_2.png){.quarto-figure-center}
+
+---
+
+![](di.png){.quarto-figure-center}
+
+---
+
+![](aoa_state.png){.quarto-figure-center}
+
+---
+
+![](aoa_mask.png){.quarto-figure-center}
+
+---
+
+![](waywiser_new.png){.quarto-figure-center}
+
+## Thank you!
+
+#### Find me online:
+
+{{< fa globe >}} [mm218.dev](https://mm218.dev) 
+
+{{< fa brands github >}} @mikemahoney218 
+
+<i class="fab fa-mastodon"></i> [@MikeMahoney218@fosstodon.org](https://fosstodon.org/@MikeMahoney218)
+
+
+::: columns
+::: {.column width="45%"}
+waywiser package:
+![](waywiser.svg)
+:::
+
+::: {.column width="10%"}
+:::
+
+::: {.column width="45%"}
+Methods preprint:
+![](arxiv.svg)
+:::
+:::
+
+
+
+
